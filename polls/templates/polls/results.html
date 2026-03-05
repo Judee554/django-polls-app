@@ -1,9 +1,40 @@
-<h1>{{ question.question_text }}</h1>
+{% load static %}
+<link rel="stylesheet" href="{% static 'polls/style.css' %}">
 
-<ul>
-{% for choice in question.choice_set.all %}
-    <li>{{ choice.choice_text }} -- {{ choice.votes }} vote{{ choice.votes|pluralize }}</li>
-{% endfor %}
-</ul>
+<div class="container">
+    {% for question in questions %}
+        <h1>{{ question.question_text }}</h1>
+        <ul>
+            {% for choice in question.choice_set.all %}
+                <li>{{ choice.choice_text }} -- {{ choice.votes }} vote{{ choice.votes|pluralize }}</li>
+            {% endfor %}
+        </ul>
+        <hr>
+    {% endfor %}
 
-<a href="{% url 'polls:detail' question.id %}">Vote again?</a>
+    <!-- Navigation links (only if there is a single question) -->
+    {% if questions|length == 1 %}
+        <div class="navigation">
+            {% if prev_question %}
+                <a href="{% url 'polls:results' prev_question.id %}">&larr; Previous Question Results</a>
+            {% endif %}
+            {% if next_question %}
+                <a href="{% url 'polls:results' next_question.id %}">Next Question Results &rarr;</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Jump to any question -->
+    <div class="question-list">
+        <h3>All Questions</h3>
+        <ul>
+            {% for q in all_questions %}
+                <li><a href="{% url 'polls:detail' q.id %}">{{ q.question_text }}</a> 
+                    (<a href="{% url 'polls:results' q.id %}">results</a>)</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Link to view full results of all questions -->
+    <p><a href="{% url 'polls:results_multi' %}">View Full Results (all questions)</a></p>
+</div>

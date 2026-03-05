@@ -1,8 +1,32 @@
-{% if latest_question_list %}
-    <ul>
-    {% for question in latest_question_list %}
-        <li><a href="{% url 'polls:detail' question.id %}">{{ question.question_text }}</a></li>
-    </ul>
-{% else %}
-    <p>No polls are available.</p>
-{% endif %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'polls/style.css' %}">
+
+<div class="container">
+    <h1>Polls</h1>
+    {% if latest_question_list %}
+        <ul>
+        {% for question in latest_question_list %}
+            <li><a href="{% url 'polls:detail' question.id %}">{{ question.question_text }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No polls available.</p>
+    {% endif %}
+    <p><a href="{% url 'polls:multi_vote' %}">Vote on Multiple Questions</a></p>
+    <p><a href="{% url 'polls:results_multi' %}">View Results</a></p>
+</div>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-image: url("{% static 'polls/Background.jpg' %}");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+</style>

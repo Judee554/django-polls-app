@@ -1,0 +1,13 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'polls/style.css' %}">
+
+<div class="container">
+    <h1>Select Questions to View Results</h1>
+    <form method="get" action="{% url 'polls:results_multi' %}">
+        {% for question in latest_question_list %}
+            <input type="checkbox" name="question_ids" value="{{ question.id }}" id="q{{ question.id }}">
+            <label for="q{{ question.id }}">{{ question.question_text }}</label><br>
+        {% endfor %}
+        <input type="submit" value="Show Results">
+    </form>
+</div>

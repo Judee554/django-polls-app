@@ -1,0 +1,19 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'polls/style.css' %}">
+
+<div class="container">
+    <h1>Vote on Multiple Questions</h1>
+    <form method="post" action="{% url 'polls:multi_vote' %}">
+        {% csrf_token %}
+        {% for question in questions %}
+            <fieldset>
+                <legend>{{ question.question_text }}</legend>
+                {% for choice in question.choice_set.all %}
+                    <input type="radio" name="question_{{ question.id }}" value="{{ choice.id }}" id="q{{ question.id }}c{{ forloop.counter }}">
+                    <label for="q{{ question.id }}c{{ forloop.counter }}">{{ choice.choice_text }}</label><br>
+                {% endfor %}
+            </fieldset>
+        {% endfor %}
+        <input type="submit" value="Vote">
+    </form>
+</div>
