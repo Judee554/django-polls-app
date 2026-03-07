@@ -24,3 +24,6 @@ cd C:\Users\Judee\Documents\djangotutorial\djangotutorial
 ## Admin Requirements
 ## Username: JudeeJeremiah
 ## Password: bangtanboys123
+URL Information
+127.0.0.1:8000/polls/1/
+127.0.0.1:8000/admin/
