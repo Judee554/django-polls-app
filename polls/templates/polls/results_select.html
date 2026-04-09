@@ -1,0 +1,96 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Select Results | Polls</title>
+    <link rel="stylesheet" href="{% static 'polls/style.css' %}?v=20260408blue1">
+</head>
+<body>
+    <main class="site-shell">
+        <header class="site-nav">
+            <a class="brand" href="{% url 'polls:index' %}">
+                <span class="brand-mark">P</span>
+                <span class="brand-text">
+                    <span class="brand-eyebrow">COMP414 Project</span>
+                    <span class="brand-title">Pulse Polls</span>
+                    <span class="brand-subtitle">Custom results selection</span>
+                </span>
+            </a>
+
+            <nav class="nav-links" aria-label="Primary">
+                <a class="nav-chip" href="{% url 'polls:index' %}">Home</a>
+                <a class="nav-chip" href="{% url 'polls:multi_vote' %}">Multi Vote</a>
+                <a class="nav-chip active" href="{% url 'polls:results_select' %}">Results</a>
+            </nav>
+        </header>
+
+        <section class="subhero">
+            <div>
+                <p class="eyebrow">Choose your result set</p>
+                <h1>Pick the questions you want to compare.</h1>
+                <p class="hero-text">Select any poll cards below, then open a grouped results page built from those choices.</p>
+
+                <div class="hero-actions">
+                    <a class="button-link" href="{% url 'polls:results_multi' %}">See All Results</a>
+                    <a class="ghost-link" href="{% url 'polls:index' %}">Back Home</a>
+                </div>
+            </div>
+
+            <aside class="feature-panel">
+                <div class="feature-image">
+                    <img src="{% static 'polls/Background.jpg' %}?v=20260408kfc2" alt="Results selection feature image">
+                </div>
+                <p class="eyebrow">Custom compare</p>
+                <p>Use this page when you only want to compare a few chosen polls instead of every result at once.</p>
+            </aside>
+        </section>
+
+        {% if messages %}
+            <div class="message-stack">
+                {% for message in messages %}
+                    <p class="site-message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="page-section">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Selectable polls</p>
+                    <h2>Choose one or more question cards.</h2>
+                    <p>Every selected question will appear on the grouped results page.</p>
+                </div>
+            </div>
+
+            {% if latest_question_list %}
+                <form method="get" action="{% url 'polls:results_multi' %}">
+                    <div class="choice-list">
+                        {% for question in latest_question_list %}
+                            <label class="choice-card">
+                                <input type="checkbox" name="question_ids" value="{{ question.id }}">
+                                <span class="choice-check">{{ forloop.counter }}</span>
+                                <span class="choice-text">
+                                    <strong>{{ question.question_text }}</strong>
+                                    <small>{{ question.choice_set.count }} answer{{ question.choice_set.count|pluralize }} available in this poll.</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                    </div>
+
+                    <div class="hero-actions stack-top">
+                        <button class="button-link" type="submit">Show Selected Results</button>
+                        <a class="ghost-link" href="{% url 'polls:results_multi' %}">Show Every Poll</a>
+                    </div>
+                </form>
+            {% else %}
+                <div class="empty-card">
+                    <h2>No questions are available yet.</h2>
+                    <p>Once questions are published, they will appear here as selectable cards.</p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

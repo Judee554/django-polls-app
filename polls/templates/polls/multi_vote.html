@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Multi Vote | Polls</title>
+    <link rel="stylesheet" href="{% static 'polls/style.css' %}?v=20260408blue1">
+</head>
+<body>
+    <main class="site-shell">
+        <header class="site-nav">
+            <a class="brand" href="{% url 'polls:index' %}">
+                <span class="brand-mark">P</span>
+                <span class="brand-text">
+                    <span class="brand-eyebrow">COMP414 Project</span>
+                    <span class="brand-title">Pulse Polls</span>
+                    <span class="brand-subtitle">Batch voting page</span>
+                </span>
+            </a>
+
+            <nav class="nav-links" aria-label="Primary">
+                <a class="nav-chip" href="{% url 'polls:index' %}">Home</a>
+                <a class="nav-chip active" href="{% url 'polls:multi_vote' %}">Multi Vote</a>
+                <a class="nav-chip" href="{% url 'polls:results_select' %}">Results</a>
+            </nav>
+        </header>
+
+        <section class="subhero">
+            <div>
+                <p class="eyebrow">Batch voting</p>
+                <h1>Vote across multiple questions in one clean flow.</h1>
+                <p class="hero-text">Each question stays inside its own card so the page is easier to scan and submit.</p>
+
+                <div class="hero-actions">
+                    <a class="button-link" href="{% url 'polls:results_select' %}">Choose Results to Compare</a>
+                    <a class="ghost-link" href="{% url 'polls:results_multi' %}">View All Results</a>
+                </div>
+            </div>
+
+            <aside class="feature-panel">
+                <div class="feature-image">
+                    <img src="{% static 'polls/Background.jpg' %}?v=20260408kfc2" alt="Multi vote feature image">
+                </div>
+                <p class="eyebrow">One page</p>
+                <p>Select answers for any questions you want, then submit them together in one pass.</p>
+            </aside>
+        </section>
+
+        {% if messages %}
+            <div class="message-stack">
+                {% for message in messages %}
+                    <p class="site-message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="page-section">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Question stack</p>
+                    <h2>Answer as many polls as you like.</h2>
+                    <p>Leave any question blank if you do not want to vote on it yet.</p>
+                </div>
+            </div>
+
+            {% if questions %}
+                <form method="post" action="{% url 'polls:multi_vote' %}">
+                    {% csrf_token %}
+
+                    {% if error_message %}
+                        <p class="form-error">{{ error_message }}</p>
+                    {% endif %}
+
+                    <div class="question-stack">
+                        {% for question in questions %}
+                            <fieldset class="question-block">
+                                <div class="card-head">
+                                    <p class="eyebrow">Question {{ forloop.counter }}</p>
+                                    <h2>{{ question.question_text }}</h2>
+                                    <p class="result-subtitle">Pick one answer for this poll if you want to include it in the submission.</p>
+                                </div>
+
+                                <div class="choice-list">
+                                    {% for choice in question.choice_set.all %}
+                                        <label class="choice-card">
+                                            <input type="radio" name="question_{{ question.id }}" value="{{ choice.id }}">
+                                            <span class="choice-check">{{ forloop.counter }}</span>
+                                            <span class="choice-text">
+                                                <strong>{{ choice.choice_text }}</strong>
+                                                <small>Select this answer for question {{ forloop.parentloop.counter }}.</small>
+                                            </span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </fieldset>
+                        {% endfor %}
+                    </div>
+
+                    <div class="hero-actions stack-top">
+                        <button class="button-link" type="submit">Submit All Votes</button>
+                        <a class="ghost-link" href="{% url 'polls:index' %}">Back Home</a>
+                    </div>
+                </form>
+            {% else %}
+                <div class="empty-card">
+                    <h2>No questions are ready yet.</h2>
+                    <p>Once published questions are available, they will appear here as separate voting cards.</p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

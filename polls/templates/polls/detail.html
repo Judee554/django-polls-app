@@ -1,0 +1,132 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vote | Polls</title>
+    <link rel="stylesheet" href="{% static 'polls/style.css' %}?v=20260408blue1">
+</head>
+<body>
+    <main class="site-shell">
+        <header class="site-nav">
+            <a class="brand" href="{% url 'polls:index' %}">
+                <span class="brand-mark">P</span>
+                <span class="brand-text">
+                    <span class="brand-eyebrow">COMP414 Project</span>
+                    <span class="brand-title">Pulse Polls</span>
+                    <span class="brand-subtitle">Single-question voting page</span>
+                </span>
+            </a>
+
+            <nav class="nav-links" aria-label="Primary">
+                <a class="nav-chip" href="{% url 'polls:index' %}">Home</a>
+                <a class="nav-chip" href="{% url 'polls:multi_vote' %}">Multi Vote</a>
+                <a class="nav-chip active" href="{% url 'polls:results_select' %}">Results</a>
+            </nav>
+        </header>
+
+        <section class="subhero">
+            <div>
+                <p class="eyebrow">Question {{ question.id }}</p>
+                <h1>{{ question.question_text }}</h1>
+                <p class="hero-text">Choose one answer, submit it, and move straight to the latest result totals.</p>
+
+                <div class="hero-actions">
+                    <a class="button-link" href="{% url 'polls:results' question.id %}">View Current Results</a>
+                    <a class="ghost-link" href="{% url 'polls:index' %}">Back Home</a>
+                </div>
+            </div>
+
+            <aside class="feature-panel">
+                <div class="feature-image">
+                    <img src="{% static 'polls/Background.jpg' %}?v=20260408kfc2" alt="Poll question feature image">
+                </div>
+                <p class="eyebrow">Quick view</p>
+                <p>Pick one answer from the card list below. The selected choice is highlighted before you submit.</p>
+                <div class="feature-stats">
+                    <div>
+                        <span>Question ID</span>
+                        <strong>{{ question.id }}</strong>
+                    </div>
+                    <div>
+                        <span>Choices</span>
+                        <strong>{{ question.choice_set.count }}</strong>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        {% if messages %}
+            <div class="message-stack">
+                {% for message in messages %}
+                    <p class="site-message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="detail-grid">
+            <form class="vote-card" action="{% url 'polls:vote' question.id %}" method="post">
+                {% csrf_token %}
+                <fieldset>
+                    <div class="card-head">
+                        <p class="eyebrow">Answer choices</p>
+                        <h2>Select one option</h2>
+                        <p class="result-subtitle">Only one answer can be submitted for this question.</p>
+                    </div>
+
+                    {% if error_message %}
+                        <p class="form-error">{{ error_message }}</p>
+                    {% endif %}
+
+                    <div class="choice-list">
+                        {% for choice in question.choice_set.all %}
+                            <label class="choice-card">
+                                <input type="radio" name="choice" value="{{ choice.id }}">
+                                <span class="choice-check">{{ forloop.counter }}</span>
+                                <span class="choice-text">
+                                    <strong>{{ choice.choice_text }}</strong>
+                                    <small>Tap this card to choose this answer.</small>
+                                </span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+
+                <div class="hero-actions">
+                    <button class="button-link" type="submit">Submit Vote</button>
+                    <a class="ghost-link" href="{% url 'polls:results' question.id %}">See Results</a>
+                </div>
+            </form>
+
+            <aside class="side-card">
+                <p class="eyebrow">Question tools</p>
+                <h2>Move through the poll set.</h2>
+                <p>Jump between questions, open the multi-vote page, or compare grouped results.</p>
+
+                <ul class="meta-list">
+                    <li>
+                        <span>Question</span>
+                        <strong>#{{ question.id }}</strong>
+                    </li>
+                    <li>
+                        <span>Choices ready</span>
+                        <strong>{{ question.choice_set.count }}</strong>
+                    </li>
+                </ul>
+
+                <div class="side-actions">
+                    {% if prev_question %}
+                        <a class="mini-link" href="{% url 'polls:detail' prev_question.id %}">&larr; Previous</a>
+                    {% endif %}
+                    {% if next_question %}
+                        <a class="mini-link" href="{% url 'polls:detail' next_question.id %}">Next &rarr;</a>
+                    {% endif %}
+                    <a class="mini-link" href="{% url 'polls:multi_vote' %}">Multi Vote</a>
+                    <a class="mini-link" href="{% url 'polls:results_select' %}">Compare Results</a>
+                </div>
+            </aside>
+        </section>
+    </main>
+</body>
+</html>

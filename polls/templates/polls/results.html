@@ -1,0 +1,162 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Results | Polls</title>
+    <link rel="stylesheet" href="{% static 'polls/style.css' %}?v=20260408blue1">
+</head>
+<body>
+    <main class="site-shell">
+        <header class="site-nav">
+            <a class="brand" href="{% url 'polls:index' %}">
+                <span class="brand-mark">P</span>
+                <span class="brand-text">
+                    <span class="brand-eyebrow">COMP414 Project</span>
+                    <span class="brand-title">Pulse Polls</span>
+                    <span class="brand-subtitle">Results dashboard</span>
+                </span>
+            </a>
+
+            <nav class="nav-links" aria-label="Primary">
+                <a class="nav-chip" href="{% url 'polls:index' %}">Home</a>
+                <a class="nav-chip" href="{% url 'polls:multi_vote' %}">Multi Vote</a>
+                <a class="nav-chip active" href="{% url 'polls:results_select' %}">Results</a>
+            </nav>
+        </header>
+
+        <section class="subhero">
+            <div>
+                {% if question_cards|length == 1 %}
+                    <p class="eyebrow">Single poll results</p>
+                    <h1>Results for the selected question.</h1>
+                    <p class="hero-text">Vote totals are shown as clean cards with quick comparisons and simple navigation.</p>
+                {% else %}
+                    <p class="eyebrow">Grouped results</p>
+                    <h1>Compare multiple poll results at once.</h1>
+                    <p class="hero-text">Each poll stays in its own result card so the page remains easy to read.</p>
+                {% endif %}
+
+                <div class="hero-actions">
+                    <a class="button-link" href="{% url 'polls:results_select' %}">Choose Different Results</a>
+                    <a class="ghost-link" href="{% url 'polls:index' %}">Back Home</a>
+                </div>
+            </div>
+
+            <aside class="feature-panel">
+                <div class="feature-image">
+                    <img src="{% static 'polls/Background.jpg' %}?v=20260408kfc2" alt="Results feature image">
+                </div>
+                <p class="eyebrow">Live totals</p>
+                <p>Each result card shows votes, percentage share, and quick links back to the poll.</p>
+            </aside>
+        </section>
+
+        {% if messages %}
+            <div class="message-stack">
+                {% for message in messages %}
+                    <p class="site-message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="page-section">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Vote totals</p>
+                    <h2>Current results</h2>
+                    <p>Open any poll again to submit another vote or move to a different result page.</p>
+                </div>
+            </div>
+
+            {% if question_cards %}
+                <div class="results-stack">
+                    {% for card in question_cards %}
+                        <article class="result-card">
+                            <div class="result-header">
+                                <div>
+                                    <p class="eyebrow">Question {{ forloop.counter }}</p>
+                                    <h2>{{ card.question.question_text }}</h2>
+                                    <p class="result-subtitle">{{ card.choice_count }} choice{{ card.choice_count|pluralize }} in this poll.</p>
+                                </div>
+
+                                <div class="result-summary">
+                                    <span class="summary-pill">{{ card.total_votes }} total vote{{ card.total_votes|pluralize }}</span>
+                                    {% if card.leading_choice %}
+                                        <span class="summary-pill highlight">Top: {{ card.leading_choice.choice_text }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="result-list">
+                                {% for row in card.choices %}
+                                    <div class="result-choice-card">
+                                        <div class="result-row-top">
+                                            <div>
+                                                <strong>{{ row.choice.choice_text }}</strong>
+                                                <span>{{ row.choice.votes }} vote{{ row.choice.votes|pluralize }}</span>
+                                            </div>
+                                            <strong class="result-percentage">{{ row.percentage }}%</strong>
+                                        </div>
+                                        <div class="result-bar">
+                                            <span style="width: {{ row.percentage }}%;"></span>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="inline-actions">
+                                <a class="card-link" href="{% url 'polls:detail' card.question.id %}">Return to Vote</a>
+                                <a class="card-link secondary" href="{% url 'polls:results' card.question.id %}">Open Single Result</a>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-card">
+                    <h2>No results are available yet.</h2>
+                    <p>Submit at least one vote and the totals will appear here automatically.</p>
+                </div>
+            {% endif %}
+
+            {% if question_cards|length == 1 %}
+                {% if prev_question or next_question %}
+                    <div class="results-nav stack-top">
+                        {% if prev_question %}
+                            <a class="ghost-link" href="{% url 'polls:results' prev_question.id %}">&larr; Previous Results</a>
+                        {% endif %}
+                        {% if next_question %}
+                            <a class="ghost-link" href="{% url 'polls:results' next_question.id %}">Next Results &rarr;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            {% if all_questions %}
+                <div class="section-heading stack-top">
+                    <div>
+                        <p class="eyebrow">More polls</p>
+                        <h2>Jump to another poll.</h2>
+                        <p>Use these cards to switch quickly between voting and results pages.</p>
+                    </div>
+                </div>
+
+                <div class="directory-grid">
+                    {% for q in all_questions %}
+                        <article class="directory-card">
+                            <p class="eyebrow">Question {{ forloop.counter }}</p>
+                            <h3>{{ q.question_text }}</h3>
+                            <p>Open the voting page or go straight to the result view.</p>
+                            <div class="poll-card-actions">
+                                <a class="card-link" href="{% url 'polls:detail' q.id %}">Vote</a>
+                                <a class="card-link secondary" href="{% url 'polls:results' q.id %}">Results</a>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

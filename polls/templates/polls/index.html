@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Polls</title>
+    <link rel="stylesheet" href="{% static 'polls/style.css' %}?v=20260408blue1">
+</head>
+<body>
+    <main class="site-shell">
+        <header class="site-nav">
+            <a class="brand" href="{% url 'polls:index' %}">
+                <span class="brand-mark">P</span>
+                <span class="brand-text">
+                    <span class="brand-eyebrow">COMP314 Project</span>
+                    <span class="brand-title">Pulse Polls</span>
+                    <span class="brand-subtitle">Fast voting. Clean results. Better presentation.</span>
+                </span>
+            </a>
+
+            <nav class="nav-links" aria-label="Primary">
+                <a class="nav-chip active" href="{% url 'polls:index' %}">Home</a>
+                <a class="nav-chip" href="{% url 'polls:multi_vote' %}">Multi Vote</a>
+                <a class="nav-chip" href="{% url 'polls:results_select' %}">Results</a>
+            </nav>
+        </header>
+
+        <section class="hero-block">
+            <div class="hero-copy">
+                <p class="eyebrow">Fresh polls, fast voting</p>
+                <h1>Make your polls site feel bold, clean, and polished.</h1>
+                <p class="hero-text">
+                    Open a question card, submit a vote in seconds, and check the latest
+                    results without the page feeling cluttered.
+                </p>
+
+                <div class="hero-actions">
+                    <a class="button-link" href="{% url 'polls:multi_vote' %}">Vote on Multiple Questions</a>
+                    <a class="ghost-link" href="{% url 'polls:results_multi' %}">View All Results</a>
+                </div>
+
+                <div class="hero-stats">
+                    <div>
+                        <strong>{{ latest_question_list|length }}</strong>
+                        <span>Live polls</span>
+                    </div>
+                    <div>
+                        <strong>1 click</strong>
+                        <span>To open a question</span>
+                    </div>
+                    <div>
+                        <strong>Live</strong>
+                        <span>Results on every poll</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="hero-card card-top">
+                    <span>Featured</span>
+                    <strong>Question cards</strong>
+                    <p>Each poll opens on its own cleaner voting page.</p>
+                </div>
+                <img src="{% static 'polls/Background.jpg' %}?v=20260408kfc2" alt="Polls feature image">
+                <div class="hero-card card-bottom">
+                    <span>Results</span>
+                    <strong>Easy to compare</strong>
+                    <p>Switch between single and grouped results quickly.</p>
+                </div>
+            </div>
+        </section>
+
+        {% if messages %}
+            <div class="message-stack">
+                {% for message in messages %}
+                    <p class="site-message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="content-section">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Available questions</p>
+                    <h2>Choose a poll card to start.</h2>
+                    <p>Open a question to vote, or jump straight into the results page.</p>
+                </div>
+            </div>
+
+            {% if latest_question_list %}
+                <div class="poll-grid">
+                    {% for question in latest_question_list %}
+                        <article class="poll-card">
+                            <span class="poll-badge">{{ forloop.counter|stringformat:"02d" }}</span>
+                            <h3>{{ question.question_text }}</h3>
+                            <p>{{ question.choice_set.count }} answer{{ question.choice_set.count|pluralize }} available for this poll.</p>
+                            <div class="poll-card-actions">
+                                <a class="card-link" href="{% url 'polls:detail' question.id %}">Open Poll</a>
+                                <a class="card-link secondary" href="{% url 'polls:results' question.id %}">See Results</a>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-card">
+                    <h2>No polls available yet.</h2>
+                    <p>Add a published question in the Django admin and it will appear here automatically.</p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
