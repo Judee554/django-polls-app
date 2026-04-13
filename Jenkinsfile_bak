@@ -34,8 +34,16 @@ pipeline {
 
                     echo "Required files found."
                     ls -la
-                    ls -la polls/templates/polls
-                    ls -la polls/static/polls
+                '''
+            }
+        }
+
+        stage('Install Nginx') {
+            steps {
+                sh '''
+                    set -e
+                    sudo apt update
+                    sudo apt install -y nginx
                 '''
             }
         }
