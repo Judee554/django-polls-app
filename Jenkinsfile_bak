@@ -29,7 +29,7 @@ pipeline {
                     set -e
                     echo "Checking required project files..."
 
-                    test -f p polls/templates/polls/index.html
+                    test -f polls/templates/polls/index.html
                     test -f polls/static/polls/style.css
 
                     echo "Required files found."
