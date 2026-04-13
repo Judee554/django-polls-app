@@ -34,18 +34,6 @@ pipeline {
 
                     echo "Required files found."
                     ls -la
-                    ls -la polls/templates
-                    ls -la polls/static
-                '''
-            }
-        }
-
-        stage('Install Nginx') {
-            steps {
-                sh '''
-                    set -e
-                    sudo apt update
-                    sudo apt install -y nginx
                 '''
             }
         }
@@ -66,11 +54,10 @@ pipeline {
                     set -e
 
                     rm -rf "$WEB_ROOT"/*
-
                     cp polls/templates/polls/index.html "$WEB_ROOT"/index.html
                     cp polls/static/polls/style.css "$WEB_ROOT"/style.css
 
-                    [ -f polls/static/polls/Background.jpg ] && cp polls/static/Background.jpg "$WEB_ROOT"/ || true
+                    [ -f polls/static/polls/Background.jpg ] && cp polls/static/polls/Background.jpg "$WEB_ROOT"/ || true
 
                     echo "Deployed files:"
                     ls -la "$WEB_ROOT"
@@ -128,7 +115,7 @@ EOF
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open http://3.14.85.64 in a browser to view the site.'
+            echo 'Open your EC2 public IP in a browser to view the site.'
         }
         failure {
             echo 'Deployment failed. Check the Jenkins console output.'
