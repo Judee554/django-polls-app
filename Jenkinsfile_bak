@@ -117,7 +117,7 @@ EOF
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open your EC2 public IP in a browser to view the site.'
+            echo 'Open http://18.188.54.62 in a browser to view the site.'
         }
         failure {
             echo 'Deployment failed. Check the Jenkins console output.'
