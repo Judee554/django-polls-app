@@ -29,8 +29,8 @@ pipeline {
                     set -e
                     echo "Checking required project files..."
 
-                    test -f polls/templates/index.html
-                    test -f polls/static/style.css
+                    test -f p polls/templates/polls/index.html
+                    test -f polls/static/polls/style.css
 
                     echo "Required files found."
                     ls -la
@@ -67,10 +67,10 @@ pipeline {
 
                     rm -rf "$WEB_ROOT"/*
 
-                    cp polls/templates/index.html "$WEB_ROOT"/index.html
-                    cp polls/static/style.css "$WEB_ROOT"/style.css
+                    cp polls/templates/polls/index.html "$WEB_ROOT"/index.html
+                    cp polls/static/polls/style.css "$WEB_ROOT"/style.css
 
-                    [ -f polls/static/Background.jpg ] && cp polls/static/Background.jpg "$WEB_ROOT"/ || true
+                    [ -f polls/static/polls/Background.jpg ] && cp polls/static/Background.jpg "$WEB_ROOT"/ || true
 
                     echo "Deployed files:"
                     ls -la "$WEB_ROOT"
