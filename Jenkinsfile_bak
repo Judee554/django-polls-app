@@ -1,3 +1,4 @@
+```groovy
 pipeline {
     agent any
     
@@ -23,6 +24,23 @@ pipeline {
             }
         }
 
+        stage('Verify Project Files') {
+            steps {
+                sh '''
+                    set -e
+                    echo "Checking required project files..."
+
+                    test -f polls/templates/index.html
+                    test -f polls/static/style.css
+
+                    echo "Required files found."
+                    ls -la
+                    ls -la polls/templates
+                    ls -la polls/static
+                '''
+            }
+        }
+
         stage('Install Nginx') {
             steps {
                 sh '''
@@ -43,15 +61,17 @@ pipeline {
             }
         }
 
-        stage('Deploy Static Files') {
+        stage('Deploy Website Files') {
             steps {
                 sh '''
                     set -e
 
                     rm -rf "$WEB_ROOT"/*
-                    
-                    # Django static files (if you collect them)
-                    cp -r * "$WEB_ROOT"/
+
+                    cp polls/templates/index.html "$WEB_ROOT"/index.html
+                    cp polls/static/style.css "$WEB_ROOT"/style.css
+
+                    [ -f polls/static/Background.jpg ] && cp polls/static/Background.jpg "$WEB_ROOT"/ || true
 
                     echo "Deployed files:"
                     ls -la "$WEB_ROOT"
@@ -59,7 +79,7 @@ pipeline {
             }
         }
 
-        stage('Configure Nginx') {
+        stage('Configure Nginx Site') {
             steps {
                 sh '''
                     set -e
@@ -91,11 +111,12 @@ EOF
                     set -e
                     sudo systemctl enable nginx
                     sudo systemctl restart nginx
+                    sudo systemctl status nginx --no-pager
                 '''
             }
         }
 
-        stage('Test Website') {
+        stage('Test Website Locally') {
             steps {
                 sh '''
                     set -e
@@ -108,10 +129,11 @@ EOF
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open http://3.14.85.64 in your browser.'
+            echo 'Open http://3.14.85.64 in a browser to view the site.'
         }
         failure {
-            echo 'Deployment failed. Check Jenkins logs.'
+            echo 'Deployment failed. Check the Jenkins console output.'
         }
     }
 }
+```
