@@ -39,14 +39,28 @@ pipeline {
         }
 
         stage('Install Nginx') {
-            steps {
-                sh '''
-                    set -e
-                    sudo apt update
-                    sudo apt install -y nginx
-                '''
-            }
-        }
+    steps {
+        sh '''
+            set -e
+
+            echo "Checking for apt lock..."
+            while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
+                  sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+                  sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+                echo "apt is busy, waiting..."
+                sleep 5
+            done
+
+            if ! dpkg -s nginx >/dev/null 2>&1; then
+                echo "Nginx not installed. Installing..."
+                sudo apt update
+                sudo apt install -y nginx
+            else
+                echo "Nginx is already installed."
+            fi
+        '''
+    }
+}
 
         stage('Create Web Root') {
             steps {
