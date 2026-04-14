@@ -168,14 +168,16 @@ EOF
             }
         }
 
-        stage('Start Django Server') {
+stage('Start Django Server') {
     steps {
         sh '''
             set -e
             cd "$WEB_ROOT"
 
             pkill -f "manage.py runserver 0.0.0.0:8000" || true
-            nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
+            nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 &
+            sleep 5
+            curl http://127.0.0.1:8000
         '''
     }
 }
