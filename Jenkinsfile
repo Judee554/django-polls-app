@@ -1,45 +1,181 @@
 pipeline {
     agent any
-
-    environment {
-        EC2_USER = "ubuntu"  // Or ubuntu, depending on your AMI
-        EC2_HOST = "44.197.180.64" //(MODIFY)
-        EC2_KEY = credentials('ec2-ssh-private-key')  // Jenkins credential with SSH private key (MODIFY)
-        PROJECT_DIR = "/home/ubuntu/pythonprojects/django_polls"  // Path to your Django app (MODIFY)
-        
+    triggers {
+        githubPush()
     }
 
-    //triggers {
-      //  githubPush()  // Enables webhook triggering
-    //}
-    
+    environment {
+        SITE_NAME  = "django-polls-app"
+        WEB_ROOT   = "/var/www/django-polls-app"
+        NGINX_CONF = "/etc/nginx/sites-available/django-polls-app"
+    }
+
+    options {
+        timestamps()
+    }
+
     stages {
-        stage('Update Code on EC2') {
+
+        stage('Checkout') {
             steps {
-                script {
-                    // Use SSH to run commands on the EC2 instance
-                    sshagent (credentials: ['ec2-ssh-private-key']) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
-                            cd ${PROJECT_DIR}
-                            git pull origin main
-                            python3 -m venv comp314
-                            source comp314/bin/activate
-                            python3 -m pip install -r requirements.txt
-                        '
-                        """
-                    }
-                }
+                git url: 'https://github.com/Judee554/django-polls-app.git', branch: 'main'
+            }
+        }
+
+        stage('Verify Project Files') {
+            steps {
+                sh '''
+                    set -e
+                    echo "Checking required Django project files..."
+
+                    test -f manage.py
+                    test -d mysite
+                    test -d polls
+                    test -f requirements.txt
+
+                    echo "Required files found."
+                    ls -la
+                '''
+            }
+        }
+
+        stage('Install Nginx and Python') {
+            steps {
+                sh '''
+                    set -e
+                    sudo apt update
+                    sudo apt install -y nginx python3 python3-pip python3-venv
+                '''
+            }
+        }
+
+        stage('Create Web Root') {
+            steps {
+                sh '''
+                    set -e
+                    sudo mkdir -p "$WEB_ROOT"
+                    sudo chown -R jenkins:jenkins "$WEB_ROOT"
+                '''
+            }
+        }
+
+        stage('Deploy Project Files') {
+            steps {
+                sh '''
+                    set -e
+
+                    rm -rf "$WEB_ROOT"/*
+                    cp -r * "$WEB_ROOT"/
+
+                    echo "Deployed files:"
+                    ls -la "$WEB_ROOT"
+                '''
+            }
+        }
+
+        stage('Set Up Virtual Environment') {
+            steps {
+                sh '''
+                    set -e
+                    cd "$WEB_ROOT"
+
+                    rm -rf venv
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Django Setup') {
+            steps {
+                sh '''
+                    set -e
+                    cd "$WEB_ROOT"
+                    . venv/bin/activate
+
+                    python manage.py migrate
+                    python manage.py collectstatic --noinput
+                '''
+            }
+        }
+
+        stage('Start Django Server') {
+            steps {
+                sh '''
+                    set -e
+                    cd "$WEB_ROOT"
+
+                    pkill -f "manage.py runserver 0.0.0.0:8000" || true
+                    nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 &
+                    sleep 5
+                    curl http://127.0.0.1:8000
+                '''
+            }
+        }
+
+        stage('Configure Nginx Site') {
+            steps {
+                sh '''
+                    set -e
+                    sudo tee "$NGINX_CONF" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name _;
+
+    location /static/ {
+        alias /var/www/django-polls-app/static/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \\$host;
+        proxy_set_header X-Real-IP \\$remote_addr;
+        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\$scheme;
+    }
+}
+EOF
+
+                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls-app
+                    sudo rm -f /etc/nginx/sites-enabled/default
+                    sudo rm -f /etc/nginx/sites-enabled/comp314_test
+                    sudo rm -f /etc/nginx/sites-enabled/jenkinstest
+
+                    sudo nginx -t
+                '''
+            }
+        }
+
+        stage('Start Nginx') {
+            steps {
+                sh '''
+                    set -e
+                    sudo systemctl enable nginx
+                    sudo systemctl restart nginx
+                    sudo systemctl status nginx --no-pager
+                '''
+            }
+        }
+
+        stage('Test Website Locally') {
+            steps {
+                sh '''
+                    set -e
+                    curl -I http://127.0.0.1
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "Code updated and app restarted successfully on EC2!"
+            echo 'Deployment successful.'
+            echo 'Open your EC2 public IP in a browser to view the site.'
         }
         failure {
-            echo "Deployment failed."
+            echo 'Deployment failed. Check the Jenkins console output.'
         }
     }
 }

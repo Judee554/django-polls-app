@@ -9,6 +9,7 @@ A feature-rich polling application built with Django, extending the official tut
 - **Jump to Any Question** – From any results page, see a list of all questions with links to vote or view results.
 - **Custom Background** – A consistent background image (`Background.jpg`) across all pages.
 - **Admin Interface** – Easily manage questions and choices via Django's built‑in admin.
+- Test webhook
 
 ## Prerequisites
 - Python 3.8 or higher
