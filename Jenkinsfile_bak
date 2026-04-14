@@ -89,6 +89,7 @@ pipeline {
                     set -e
                     cd "$WEB_ROOT"
 
+                    rm -rf venv
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip
@@ -105,7 +106,7 @@ pipeline {
                     . venv/bin/activate
 
                     python manage.py migrate
-                    python manage.py collectstatic --noinput || true
+                    python manage.py collectstatic --noinput
                 '''
             }
         }
@@ -183,7 +184,7 @@ EOF
             echo 'Open your EC2 public IP in a browser to view the site.'
         }
         failure {
-            echo 'Deployment failed. Check the Jenkins console output.'
+            echo 'Deployment failed. Check Jenkins console output.'
         }
     }
 }
