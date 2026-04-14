@@ -19,7 +19,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Judee554/django-polls-app.git', branch: 'main'
+                git url: 'https://github.com/Judee554/django-polls-app.git/', branch: 'main'
             }
         }
 
@@ -64,8 +64,9 @@ pipeline {
                     set -e
 
                     rm -rf "$WEB_ROOT"/*
-                    cp polls/templates/polls/index.html "$WEB_ROOT"/index.html
-                    cp polls/static/polls/style.css "$WEB_ROOT"/style.css
+                    cp polls/templates/polls/index.html "$WEB_ROOT"/
+                    cp polls/static/polls/style.css "$WEB_ROOT"/
+                    
 
                     [ -f polls/static/polls/Background.jpg ] && cp polls/static/polls/Background.jpg "$WEB_ROOT"/ || true
 
@@ -85,7 +86,7 @@ server {
     server_name _;
 
     root $WEB_ROOT;
-    index index.html;
+    index polls/templates/polls/index.html;
 
     location / {
         try_files \\$uri \\$uri/ =404;
@@ -93,7 +94,7 @@ server {
 }
 EOF
 
-                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls-app
+                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/jenkinstest
                     sudo rm -f /etc/nginx/sites-enabled/default
 
                     sudo nginx -t
@@ -125,7 +126,7 @@ EOF
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open http://18.188.54.62 in a browser to view the site.'
+            echo 'Open your EC2 public IP in a browser to view the site.'
         }
         failure {
             echo 'Deployment failed. Check the Jenkins console output.'
