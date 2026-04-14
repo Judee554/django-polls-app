@@ -30,29 +30,20 @@ pipeline {
                     echo "Checking required Django project files..."
 
                     test -f manage.py
-                    test -d polls
                     test -d mysite
+                    test -d polls
                     test -f requirements.txt
 
-                    echo "Required Django files found."
+                    echo "Required files found."
                     ls -la
                 '''
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install Nginx and Python') {
             steps {
                 sh '''
                     set -e
-
-                    echo "Checking for apt lock..."
-                    while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
-                          sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
-                          sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-                        echo "apt is busy, waiting..."
-                        sleep 5
-                    done
-
                     sudo apt update
                     sudo apt install -y nginx python3 python3-pip python3-venv
                 '''
@@ -77,7 +68,7 @@ pipeline {
                     rm -rf "$WEB_ROOT"/*
                     cp -r * "$WEB_ROOT"/
 
-                    echo "Deployed project files:"
+                    echo "Deployed files:"
                     ls -la "$WEB_ROOT"
                 '''
             }
@@ -129,7 +120,6 @@ pipeline {
             steps {
                 sh '''
                     set -e
-
                     sudo tee "$NGINX_CONF" > /dev/null <<EOF
 server {
     listen 80;
@@ -186,7 +176,7 @@ EOF
             echo 'Open your EC2 public IP in a browser to view the site.'
         }
         failure {
-            echo 'Deployment failed. Check Jenkins console output.'
+            echo 'Deployment failed. Check the Jenkins console output.'
         }
     }
 }
