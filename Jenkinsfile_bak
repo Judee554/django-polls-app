@@ -100,7 +100,7 @@ server {
     server_name _;
 
     root $WEB_ROOT;
-    index polls/templates/polls/index.html;
+    index index.html;
 
     location / {
         try_files \\$uri \\$uri/ =404;
