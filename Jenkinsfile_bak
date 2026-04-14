@@ -6,8 +6,8 @@ pipeline {
     }
 
     environment {
-        SITE_NAME = "django-polls-app"
-        WEB_ROOT  = "/var/www/django-polls-app"
+        SITE_NAME  = "django-polls-app"
+        WEB_ROOT   = "/var/www/django-polls-app"
         NGINX_CONF = "/etc/nginx/sites-available/django-polls-app"
     }
 
@@ -19,7 +19,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Judee554/django-polls-app.git/', branch: 'main'
+                git url: 'https://github.com/Judee554/django-polls-app.git', branch: 'main'
             }
         }
 
@@ -27,40 +27,37 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    echo "Checking required project files..."
+                    echo "Checking required Django project files..."
 
-                    test -f polls/templates/polls/index.html
-                    test -f polls/static/polls/style.css
+                    test -f manage.py
+                    test -d polls
+                    test -d mysite
+                    test -f requirements.txt
 
-                    echo "Required files found."
+                    echo "Required Django files found."
                     ls -la
                 '''
             }
         }
 
-        stage('Install Nginx') {
-    steps {
-        sh '''
-            set -e
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    set -e
 
-            echo "Checking for apt lock..."
-            while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
-                  sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
-                  sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-                echo "apt is busy, waiting..."
-                sleep 5
-            done
+                    echo "Checking for apt lock..."
+                    while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
+                          sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+                          sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+                        echo "apt is busy, waiting..."
+                        sleep 5
+                    done
 
-            if ! dpkg -s nginx >/dev/null 2>&1; then
-                echo "Nginx not installed. Installing..."
-                sudo apt update
-                sudo apt install -y nginx
-            else
-                echo "Nginx is already installed."
-            fi
-        '''
-    }
-}
+                    sudo apt update
+                    sudo apt install -y nginx python3 python3-pip python3-venv
+                '''
+            }
+        }
 
         stage('Create Web Root') {
             steps {
@@ -72,20 +69,55 @@ pipeline {
             }
         }
 
-        stage('Deploy Website Files') {
+        stage('Deploy Project Files') {
             steps {
                 sh '''
                     set -e
 
                     rm -rf "$WEB_ROOT"/*
-                    cp polls/templates/polls/index.html "$WEB_ROOT"/
-                    cp polls/static/polls/style.css "$WEB_ROOT"/
-                    
+                    cp -r * "$WEB_ROOT"/
 
-                    [ -f polls/static/polls/Background.jpg ] && cp polls/static/polls/Background.jpg "$WEB_ROOT"/ || true
-
-                    echo "Deployed files:"
+                    echo "Deployed project files:"
                     ls -la "$WEB_ROOT"
+                '''
+            }
+        }
+
+        stage('Set Up Virtual Environment') {
+            steps {
+                sh '''
+                    set -e
+                    cd "$WEB_ROOT"
+
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Django Setup') {
+            steps {
+                sh '''
+                    set -e
+                    cd "$WEB_ROOT"
+                    . venv/bin/activate
+
+                    python manage.py migrate
+                    python manage.py collectstatic --noinput || true
+                '''
+            }
+        }
+
+        stage('Start Django Server') {
+            steps {
+                sh '''
+                    set -e
+                    cd "$WEB_ROOT"
+
+                    pkill -f "manage.py runserver 0.0.0.0:8000" || true
+                    nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
                 '''
             }
         }
@@ -94,27 +126,30 @@ pipeline {
             steps {
                 sh '''
                     set -e
+
                     sudo tee "$NGINX_CONF" > /dev/null <<EOF
 server {
     listen 80;
     server_name _;
 
     location /static/ {
-        alias $WEB_ROOT/polls/static/;
+        alias /var/www/django-polls-app/static/;
     }
 
     location / {
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
 
-                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/jenkinstest
+                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls-app
                     sudo rm -f /etc/nginx/sites-enabled/default
+                    sudo rm -f /etc/nginx/sites-enabled/comp314_test
+                    sudo rm -f /etc/nginx/sites-enabled/jenkinstest
 
                     sudo nginx -t
                 '''
@@ -136,7 +171,7 @@ EOF
             steps {
                 sh '''
                     set -e
-                    curl -I http://localhost
+                    curl -I http://127.0.0.1
                 '''
             }
         }
