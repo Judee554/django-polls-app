@@ -168,14 +168,17 @@ EOF
             }
         }
 
-        stage('Test Website Locally') {
-            steps {
-                sh '''
-                    set -e
-                    curl -I http://127.0.0.1
-                '''
-            }
-        }
+        stage('Start Django Server') {
+    steps {
+        sh '''
+            set -e
+            cd "$WEB_ROOT"
+
+            pkill -f "manage.py runserver 0.0.0.0:8000" || true
+            nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
+        '''
+    }
+}
     }
 
     post {
