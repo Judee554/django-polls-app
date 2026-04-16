@@ -112,9 +112,13 @@ pipeline {
                     cd "$WEB_ROOT"
 
                     pkill -f "manage.py runserver 0.0.0.0:8000" || true
-                    nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 &
-                    sleep 8
-                    curl http://127.0.0.1:8000
+
+                    BUILD_ID=dontKillMe nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 < /dev/null &
+
+                    sleep 10
+
+                    cat django.log || true
+                    curl -I http://127.0.0.1:8000
                 '''
             }
         }
@@ -123,7 +127,7 @@ pipeline {
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open: http://3.15.210.49:8000'
+            echo 'Open: http://18.188.39.93:8000'
         }
         failure {
             echo 'Deployment failed. Check the Jenkins console output.'
