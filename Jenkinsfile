@@ -43,12 +43,18 @@ pipeline {
             steps {
                 sh '''
                     set -e
+
                     pkill -f "manage.py runserver" || true
-                    nohup setsid venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 < /dev/null &
+                    screen -S django_server -X quit || true
+
+                    screen -dmS django_server bash -c '
+                        source venv/bin/activate
+                        python manage.py runserver 0.0.0.0:8000
+                    '
+
                     sleep 10
                     sudo ss -tulpn | grep 8000 || true
-                    tail -n 20 django.log || true
-                    curl -I http://127.0.0.1:8000 || true
+                    screen -ls || true
                 '''
             }
         }
