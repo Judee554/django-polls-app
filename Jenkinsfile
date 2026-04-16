@@ -111,13 +111,18 @@ pipeline {
                     set -e
                     cd "$WEB_ROOT"
 
-                    pkill -f "manage.py runserver 0.0.0.0:8000" || true
+                    pkill -f "manage.py runserver" || true
 
-                    BUILD_ID=dontKillMe nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 < /dev/null &
+                    nohup setsid "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 < /dev/null &
 
                     sleep 10
 
-                    cat django.log || true
+                    echo "Checking if server is running..."
+                    sudo ss -tulpn | grep 8000 || true
+
+                    echo "Last logs:"
+                    tail -n 20 django.log || true
+
                     curl -I http://127.0.0.1:8000
                 '''
             }
