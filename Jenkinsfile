@@ -47,14 +47,15 @@ pipeline {
                     pkill -f "manage.py runserver" || true
                     screen -S django_server -X quit || true
 
-                    screen -dmS django_server bash -c '
-                        source venv/bin/activate
-                        python manage.py runserver 0.0.0.0:8000
-                    '
+                    screen -dmS django_server bash -c 'cd /var/lib/jenkins/workspace/JudeeJ_COMP314_Exercise4 && source venv/bin/activate && python manage.py runserver 0.0.0.0:8000'
 
                     sleep 10
-                    sudo ss -tulpn | grep 8000 || true
+
+                    echo "Screen sessions:"
                     screen -ls || true
+
+                    echo "Port check:"
+                    sudo ss -tulpn | grep 8000 || true
                 '''
             }
         }
@@ -63,7 +64,7 @@ pipeline {
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open your EC2 public IP with :8000'
+            echo 'Open: http://18.188.39.93:8000'
         }
         failure {
             echo 'Deployment failed. Check the Jenkins console output.'
