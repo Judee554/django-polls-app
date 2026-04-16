@@ -1,13 +1,12 @@
 pipeline {
     agent any
+
     triggers {
         githubPush()
     }
 
     environment {
-        SITE_NAME  = "django-polls-app"
-        WEB_ROOT   = "/var/www/django-polls-app"
-        NGINX_CONF = "/etc/nginx/sites-available/django-polls-app"
+        WEB_ROOT = "/var/www/django-polls-app"
     }
 
     options {
@@ -39,12 +38,18 @@ pipeline {
             }
         }
 
-        stage('Install Nginx and Python') {
+        stage('Install Python') {
             steps {
                 sh '''
                     set -e
-                    sudo apt update
-                    sudo apt install -y nginx python3 python3-pip python3-venv
+                    sudo pkill -f apt || true
+                    sudo rm -f /var/lib/apt/lists/lock
+                    sudo rm -f /var/cache/apt/archives/lock
+                    sudo rm -f /var/lib/dpkg/lock-frontend
+                    sudo rm -f /var/lib/dpkg/lock
+                    sudo dpkg --configure -a || true
+                    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+                    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip python3-venv
                 '''
             }
         }
@@ -63,7 +68,6 @@ pipeline {
             steps {
                 sh '''
                     set -e
-
                     rm -rf "$WEB_ROOT"/*
                     cp -r * "$WEB_ROOT"/
 
@@ -109,61 +113,8 @@ pipeline {
 
                     pkill -f "manage.py runserver 0.0.0.0:8000" || true
                     nohup "$WEB_ROOT"/venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload > django.log 2>&1 &
-                    sleep 5
+                    sleep 8
                     curl http://127.0.0.1:8000
-                '''
-            }
-        }
-
-        stage('Configure Nginx Site') {
-            steps {
-                sh '''
-                    set -e
-                    sudo tee "$NGINX_CONF" > /dev/null <<EOF
-server {
-    listen 80;
-    server_name _;
-
-    location /static/ {
-        alias /var/www/django-polls-app/static/;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \\$host;
-        proxy_set_header X-Real-IP \\$remote_addr;
-        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \\$scheme;
-    }
-}
-EOF
-
-                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls-app
-                    sudo rm -f /etc/nginx/sites-enabled/default
-                    sudo rm -f /etc/nginx/sites-enabled/comp314_test
-                    sudo rm -f /etc/nginx/sites-enabled/jenkinstest
-
-                    sudo nginx -t
-                '''
-            }
-        }
-
-        stage('Start Nginx') {
-            steps {
-                sh '''
-                    set -e
-                    sudo systemctl enable nginx
-                    sudo systemctl restart nginx
-                    sudo systemctl status nginx --no-pager
-                '''
-            }
-        }
-
-        stage('Test Website Locally') {
-            steps {
-                sh '''
-                    set -e
-                    curl -I http://127.0.0.1
                 '''
             }
         }
@@ -172,7 +123,7 @@ EOF
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open your EC2 public IP in a browser to view the site.'
+            echo 'Open: http://3.15.210.49:8000'
         }
         failure {
             echo 'Deployment failed. Check the Jenkins console output.'
