@@ -1,8 +1,13 @@
 pipeline {
     agent any
-
+    
     triggers {
         githubPush()
+    }
+
+    environment {
+        APP_DIR = "/home/ubuntu/django-polls-app"
+        VENV_DIR = "/home/ubuntu/venv"
     }
 
     options {
@@ -10,52 +15,74 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/Judee554/django-polls-app.git', branch: 'main'
             }
         }
 
-        stage('Setup Environment') {
+        stage('Setup Python Environment') {
             steps {
                 sh '''
                     set -e
-                    python3 -m venv venv || true
-                    . venv/bin/activate
+
+                    sudo apt update
+                    sudo apt install -y python3-pip python3-venv
+
+                    python3 -m venv $VENV_DIR
+                    source $VENV_DIR/bin/activate
+
                     pip install --upgrade pip
-                    pip install -r requirements.txt
+                    pip install django gunicorn
                 '''
             }
         }
 
-        stage('Migrate DB') {
+        stage('Prepare App Directory') {
             steps {
                 sh '''
                     set -e
-                    . venv/bin/activate
+
+                    rm -rf $APP_DIR
+                    mkdir -p $APP_DIR
+                    cp -r * $APP_DIR
+                '''
+            }
+        }
+
+        stage('Run Migrations') {
+            steps {
+                sh '''
+                    set -e
+                    source $VENV_DIR/bin/activate
+                    cd $APP_DIR
+
                     python manage.py migrate
-                    python manage.py collectstatic --noinput
                 '''
             }
         }
 
-        stage('Run Server') {
+        stage('Run Django App') {
             steps {
                 sh '''
                     set -e
+                    source $VENV_DIR/bin/activate
+                    cd $APP_DIR
 
-                    pkill -f "manage.py runserver" || true
-                    screen -S django_server -X quit || true
+                    pkill gunicorn || true
 
-                    screen -dmS django_server bash -c 'cd /var/lib/jenkins/workspace/JudeeJ_COMP314_Exercise4 && source venv/bin/activate && python manage.py runserver 0.0.0.0:8000'
+                    nohup gunicorn mysite.wsgi:application \
+                        --bind 0.0.0.0:8000 &
+                '''
+            }
+        }
 
-                    sleep 10
-
-                    echo "Screen sessions:"
-                    screen -ls || true
-
-                    echo "Port check:"
-                    sudo ss -tulpn | grep 8000 || true
+        stage('Test App') {
+            steps {
+                sh '''
+                    set -e
+                    curl -I http://localhost:8000
                 '''
             }
         }
@@ -64,10 +91,10 @@ pipeline {
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open: http://18.188.39.93:8000'
+            echo 'Visit: http://YOUR_EC2_PUBLIC_IP:8000'
         }
         failure {
-            echo 'Deployment failed. Check the Jenkins console output.'
+            echo 'Deployment failed. Check Jenkins logs.'
         }
     }
 }
