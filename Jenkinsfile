@@ -39,7 +39,7 @@ pipeline {
                 sh '''
                     set -e
                     sudo apt update
-                    sudo apt install -y nginx python3-pip python3-venv
+                    sudo apt install -y nginx
                 '''
             }
         }
@@ -47,7 +47,7 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    sudo mkdir -p "$WEB_ROOT/static"
+                    sudo mkdir -p "$WEB_ROOT"
                     sudo chown -R jenkins:jenkins "$WEB_ROOT"
                 '''
             }
@@ -56,16 +56,16 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    python3 manage.py migrate --noinput
-                    python3 manage.py collectstatic --noinput || true
-                    rm -rf "$WEB_ROOT/static"/*
-                    cp -r staticfiles/* "$WEB_ROOT/static/" 2>/dev/null || true
+                    rm -rf "$WEB_ROOT"/*
+                    cp polls/templates/polls/detail.html "$WEB_ROOT"/
+                    cp polls/templates/polls/index.html "$WEB_ROOT"/
+                    cp polls/templates/polls/multi_vote.html "$WEB_ROOT"/
+                    cp polls/templates/polls/results.html "$WEB_ROOT"/
+                    cp polls/templates/polls/results_select.html "$WEB_ROOT"/
+                    cp polls/static/polls/style.css "$WEB_ROOT"/
+                    [ -f polls/static/polls/Background.png ] && cp polls/static/polls/Background.png "$WEB_ROOT"/ || true
                     echo "Deployed files:"
-                    ls -la "$WEB_ROOT/static"
+                    ls -la "$WEB_ROOT"
                 '''
             }
         }
@@ -77,14 +77,10 @@ pipeline {
 server {
     listen 80;
     server_name _;
-    location /static/ {
-        alias $WEB_ROOT/static/;
-    }
+    root $WEB_ROOT;
+    index index.html;
     location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        try_files \\$uri \\$uri/ =404;
     }
 }
 EOF
@@ -108,9 +104,6 @@ EOF
             steps {
                 sh '''
                     set -e
-                    pkill -f "manage.py runserver" || true
-                    nohup bash -c ". venv/bin/activate && python3 manage.py runserver 0.0.0.0:8000" > django.log 2>&1 &
-                    sleep 5
                     curl -I http://localhost
                 '''
             }
