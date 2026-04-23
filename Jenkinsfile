@@ -9,7 +9,6 @@ pipeline {
         WEB_ROOT   = "/var/www/django-polls"
         NGINX_CONF = "/etc/nginx/sites-available/django-polls"
         REPO_URL   = "https://github.com/Judee554/django-polls-app.git"
-        APP_DIR    = "/var/lib/jenkins/workspace/JudeeJ_COMP314_Exercise4"
     }
     options {
         timestamps()
@@ -32,12 +31,12 @@ pipeline {
                 '''
             }
         }
-        stage('Install Dependencies') {
+        stage('Install Nginx') {
             steps {
                 sh '''
                     set -e
                     sudo apt update
-                    sudo apt install -y python3-pip python3-venv nginx
+                    sudo apt install -y nginx python3-pip python3-venv
                 '''
             }
         }
@@ -50,7 +49,7 @@ pipeline {
                 '''
             }
         }
-        stage('Setup Django App') {
+        stage('Deploy Website Files') {
             steps {
                 sh '''
                     set -e
@@ -60,16 +59,9 @@ pipeline {
                     pip install -r requirements.txt
                     python3 manage.py migrate
                     python3 manage.py collectstatic --noinput || true
-                '''
-            }
-        }
-        stage('Deploy Static Files') {
-            steps {
-                sh '''
-                    set -e
                     rm -rf "$WEB_ROOT/static"/*
                     cp -r staticfiles/* "$WEB_ROOT/static/" 2>/dev/null || true
-                    echo "Deployed static files:"
+                    echo "Deployed files:"
                     ls -la "$WEB_ROOT/static"
                 '''
             }
@@ -109,22 +101,10 @@ EOF
                 '''
             }
         }
-        stage('Start Django App') {
-            steps {
-                sh '''
-                    set -e
-                    pkill -f "manage.py runserver" || true
-                    nohup bash -c "cd $APP_DIR && . venv/bin/activate && python3 manage.py runserver 0.0.0.0:8000" > django.log 2>&1 &
-                    sleep 5
-                    pgrep -f "manage.py runserver" > /dev/null
-                '''
-            }
-        }
         stage('Test Website Locally') {
             steps {
                 sh '''
                     set -e
-                    curl -I http://127.0.0.1:8000
                     curl -I http://localhost
                 '''
             }
