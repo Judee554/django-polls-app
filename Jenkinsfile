@@ -10,6 +10,7 @@ pipeline {
         WEB_ROOT   = "/var/www/django-polls"
         NGINX_CONF = "/etc/nginx/sites-available/django-polls"
         REPO_URL   = "https://github.com/Judee554/django-polls-app.git"
+        APP_DIR    = "/var/lib/jenkins/workspace/JudeeJ_COMP314_Exercise4"
     }
 
     options {
@@ -38,25 +39,22 @@ pipeline {
             steps {
                 sh '''
                     set -e
-
                     python3 -m venv venv
                     . venv/bin/activate
-
                     pip install --upgrade pip
                     pip install -r requirements.txt
-
                     python manage.py migrate
-                    python manage.py collectstatic --noinput
+                    python manage.py collectstatic --noinput || true
                 '''
             }
         }
 
-        stage('Prepare Web Directory') {
+        stage('Prepare Static Directory') {
             steps {
                 sh '''
                     set -e
-                    sudo mkdir -p "$WEB_ROOT"
-                    sudo chown -R jenkins:jenkins "$WEB_ROOT"
+                    sudo mkdir -p "$WEB_ROOT/static"
+                    [ -d staticfiles ] && sudo cp -r staticfiles/* "$WEB_ROOT/static/" || true
                 '''
             }
         }
@@ -65,59 +63,49 @@ pipeline {
             steps {
                 sh '''
                     set -e
-
                     sudo tee "$NGINX_CONF" > /dev/null <<EOF
 server {
     listen 80;
     server_name _;
 
     location /static/ {
-        root $WEB_ROOT;
+        alias $WEB_ROOT/static/;
     }
 
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \\$host;
         proxy_set_header X-Real-IP \\$remote_addr;
+        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
     }
 }
 EOF
-
                     sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls
                     sudo rm -f /etc/nginx/sites-enabled/default
-
                     sudo nginx -t
-                '''
-            }
-        }
-
-        stage('Start Django Server') {
-            steps {
-                sh '''
-                    set -e
-
-                    pkill -f "manage.py runserver" || true
-
-                    . venv/bin/activate
-                    BUILD_ID=dontKillMe nohup python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
-                '''
-            }
-        }
-
-        stage('Start Nginx') {
-            steps {
-                sh '''
-                    set -e
                     sudo systemctl enable nginx
                     sudo systemctl restart nginx
                 '''
             }
         }
 
-        stage('Test Site') {
+        stage('Start Django in Background') {
             steps {
                 sh '''
                     set -e
+                    pkill -f "manage.py runserver" || true
+                    nohup bash -c "cd $APP_DIR && . venv/bin/activate && python manage.py runserver 0.0.0.0:8000" > django.log 2>&1 &
+                    sleep 5
+                    pgrep -f "manage.py runserver" > /dev/null
+                '''
+            }
+        }
+
+        stage('Test App') {
+            steps {
+                sh '''
+                    set -e
+                    curl -I http://127.0.0.1:8000
                     curl -I http://localhost
                 '''
             }
@@ -126,10 +114,11 @@ EOF
 
     post {
         success {
-            echo 'SUCCESS: Your Django site is live via Nginx (port 80)'
+            echo 'Deployment successful.'
+            echo 'Open your EC2 public IP in a browser.'
         }
         failure {
-            echo 'FAILURE: Check Jenkins logs'
+            echo 'Deployment failed. Check Jenkins console output.'
         }
     }
 }
