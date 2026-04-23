@@ -1,100 +1,58 @@
 pipeline {
     agent any
-    
-    triggers {
-        githubPush()
-    }
 
     environment {
-        APP_DIR = "/home/ubuntu/django-polls-app"
-        VENV_DIR = "/home/ubuntu/venv"
-    }
-
-    options {
-        timestamps()
+        EC2_USER    = "ubuntu"
+        EC2_HOST    = "3.138.190.82"
+        CRED_ID     = "ec2-ssh-private-key"
+        PROJECT_DIR = "/home/ubuntu/django-polls-app"
+        REPO_URL    = "https://github.com/Judee554/django-polls-app.git"
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Clean Deploy & Start Server') {
             steps {
-                git url: 'https://github.com/Judee554/django-polls-app.git', branch: 'main'
-            }
-        }
+                script {
+                    sshagent([CRED_ID]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
+                            
+                            sudo apt-get update && sudo apt-get install -y python3-venv python3-pip git
 
-        stage('Setup Python Environment') {
-            steps {
-                sh '''
-                    set -e
+                            sudo fuser -k 8000/tcp || true
 
-                    sudo apt update
-                    sudo apt install -y python3-pip python3-venv
+                            sudo rm -rf ${PROJECT_DIR}
+                            cd /home/ubuntu
+                            git clone ${REPO_URL} django-polls-app
 
-                    python3 -m venv $VENV_DIR
-                    source $VENV_DIR/bin/activate
+                            cd ${PROJECT_DIR}
+                            python3 -m venv venv
+                            . venv/bin/activate
 
-                    pip install --upgrade pip
-                    pip install django gunicorn
-                '''
-            }
-        }
+                            pip install --upgrade pip
+                            pip install -r requirements.txt
 
-        stage('Prepare App Directory') {
-            steps {
-                sh '''
-                    set -e
+                            python3 manage.py migrate --noinput
+                            python3 manage.py collectstatic --noinput || true
 
-                    rm -rf $APP_DIR
-                    mkdir -p $APP_DIR
-                    cp -r * $APP_DIR
-                '''
-            }
-        }
+                            BUILD_ID=dontKillMe nohup python3 manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
 
-        stage('Run Migrations') {
-            steps {
-                sh '''
-                    set -e
-                    source $VENV_DIR/bin/activate
-                    cd $APP_DIR
-
-                    python manage.py migrate
-                '''
-            }
-        }
-
-        stage('Run Django App') {
-            steps {
-                sh '''
-                    set -e
-                    source $VENV_DIR/bin/activate
-                    cd $APP_DIR
-
-                    pkill gunicorn || true
-
-                    nohup gunicorn mysite.wsgi:application \
-                        --bind 0.0.0.0:8000 &
-                '''
-            }
-        }
-
-        stage('Test App') {
-            steps {
-                sh '''
-                    set -e
-                    curl -I http://localhost:8000
-                '''
+                            sleep 2
+                            echo 'Server started at http://${EC2_HOST}:8000'
+                        "
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Deployment successful.'
-            echo 'Visit: http://YOUR_EC2_PUBLIC_IP:8000'
+            echo "SUCCESS: Your site is live at http://3.134.89.131:8000"
         }
         failure {
-            echo 'Deployment failed. Check Jenkins logs.'
+            echo "FAILURE: Check Jenkins console output for errors."
         }
     }
 }
