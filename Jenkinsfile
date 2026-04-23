@@ -10,7 +10,6 @@ pipeline {
         WEB_ROOT   = "/var/www/django-polls"
         NGINX_CONF = "/etc/nginx/sites-available/django-polls"
         APP_DIR    = "/var/lib/jenkins/workspace/JudeeJ_COMP314_Exercise4"
-        REPO_URL   = "https://github.com/Judee554/django-polls-app.git"
     }
 
     options {
@@ -20,7 +19,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: "${REPO_URL}", branch: 'main'
+                git branch: 'main', url: 'https://github.com/Judee554/django-polls-app.git'
             }
         }
 
@@ -28,12 +27,10 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    echo "Checking required project files..."
                     test -f manage.py
                     test -f requirements.txt
                     test -d polls
                     test -d mysite
-                    echo "Required files found."
                     ls -la
                 '''
             }
@@ -63,13 +60,10 @@ pipeline {
             steps {
                 sh '''
                     set -e
-
                     python3 -m venv venv
                     . venv/bin/activate
-
                     pip install --upgrade pip
                     pip install -r requirements.txt
-
                     python3 manage.py migrate --noinput
                     python3 manage.py collectstatic --noinput || true
 
@@ -77,9 +71,6 @@ pipeline {
                         rm -rf "$WEB_ROOT/static/"*
                         cp -r /var/www/django-polls-app/static/* "$WEB_ROOT/static/" || true
                     fi
-
-                    echo "Static files copied."
-                    ls -la "$WEB_ROOT/static" || true
                 '''
             }
         }
@@ -116,11 +107,8 @@ EOF
             steps {
                 sh '''
                     set -e
-
                     pkill -f "manage.py runserver" || true
-
                     nohup bash -c "cd $APP_DIR && . venv/bin/activate && python3 manage.py runserver 0.0.0.0:8000" > django.log 2>&1 &
-
                     sleep 5
                     pgrep -f "manage.py runserver" > /dev/null
                 '''
@@ -133,7 +121,6 @@ EOF
                     set -e
                     sudo systemctl enable nginx
                     sudo systemctl restart nginx
-                    sudo systemctl status nginx --no-pager
                 '''
             }
         }
@@ -152,10 +139,9 @@ EOF
     post {
         success {
             echo 'Deployment successful.'
-            echo 'Open your EC2 public IP in a browser to view the site.'
         }
         failure {
-            echo 'Deployment failed. Check the Jenkins console output.'
+            echo 'Deployment failed. Check Jenkins console output.'
         }
     }
 }
