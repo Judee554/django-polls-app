@@ -23,8 +23,12 @@ pipeline {
                 sh '''
                     set -e
                     echo "Checking required project files..."
-                    test -f manage.py
-                    test -f requirements.txt
+                    test -f polls/templates/polls/detail.html
+                    test -f polls/templates/polls/index.html
+                    test -f polls/templates/polls/multi_vote.html
+                    test -f polls/templates/polls/results.html
+                    test -f polls/templates/polls/results_select.html
+                    test -f polls/static/polls/style.css
                     echo "Required files found."
                     ls -la
                 '''
@@ -53,9 +57,13 @@ pipeline {
                 sh '''
                     set -e
                     rm -rf "$WEB_ROOT"/*
-                    cp manage.py "$WEB_ROOT"/
-                    cp requirements.txt "$WEB_ROOT"/
-                    [ -f db.sqlite3 ] && cp db.sqlite3 "$WEB_ROOT"/ || true
+                    cp polls/templates/polls/detail.html "$WEB_ROOT"/
+                    cp polls/templates/polls/index.html "$WEB_ROOT"/
+                    cp polls/templates/polls/multi_vote.html "$WEB_ROOT"/
+                    cp polls/templates/polls/results.html "$WEB_ROOT"/
+                    cp polls/templates/polls/results_select.html "$WEB_ROOT"/
+                    cp polls/static/polls/style.css "$WEB_ROOT"/
+                    [ -f polls/static/polls/Background.png ] && cp polls/static/polls/Background.png "$WEB_ROOT"/ || true
                     echo "Deployed files:"
                     ls -la "$WEB_ROOT"
                 '''
@@ -70,7 +78,7 @@ server {
     listen 80;
     server_name _;
     root $WEB_ROOT;
-    index manage.py;
+    index index.html;
     location / {
         try_files \\$uri \\$uri/ =404;
     }
