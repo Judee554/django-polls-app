@@ -1,58 +1,135 @@
 pipeline {
     agent any
+    
+    triggers {
+        githubPush()
+    }
 
     environment {
-        EC2_USER    = "ubuntu"
-        EC2_HOST    = "3.138.190.82"
-        CRED_ID     = "ec2-ssh-private-key"
-        PROJECT_DIR = "/home/ubuntu/django-polls-app"
-        REPO_URL    = "https://github.com/Judee554/django-polls-app.git"
+        SITE_NAME  = "django-polls"
+        WEB_ROOT   = "/var/www/django-polls"
+        NGINX_CONF = "/etc/nginx/sites-available/django-polls"
+        REPO_URL   = "https://github.com/Judee554/django-polls-app.git"
+    }
+
+    options {
+        timestamps()
     }
 
     stages {
-        stage('Clean Deploy & Start Server') {
+
+        stage('Checkout') {
             steps {
-                script {
-                    sshagent([CRED_ID]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
-                            
-                            sudo apt-get update && sudo apt-get install -y python3-venv python3-pip git
+                git url: "${REPO_URL}", branch: 'main'
+            }
+        }
 
-                            sudo fuser -k 8000/tcp || true
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    set -e
+                    sudo apt update
+                    sudo apt install -y python3-pip python3-venv nginx
+                '''
+            }
+        }
 
-                            sudo rm -rf ${PROJECT_DIR}
-                            cd /home/ubuntu
-                            git clone ${REPO_URL} django-polls-app
+        stage('Setup Django App') {
+            steps {
+                sh '''
+                    set -e
 
-                            cd ${PROJECT_DIR}
-                            python3 -m venv venv
-                            . venv/bin/activate
+                    python3 -m venv venv
+                    . venv/bin/activate
 
-                            pip install --upgrade pip
-                            pip install -r requirements.txt
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
 
-                            python3 manage.py migrate --noinput
-                            python3 manage.py collectstatic --noinput || true
+                    python manage.py migrate
+                    python manage.py collectstatic --noinput
+                '''
+            }
+        }
 
-                            BUILD_ID=dontKillMe nohup python3 manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
+        stage('Prepare Web Directory') {
+            steps {
+                sh '''
+                    set -e
+                    sudo mkdir -p "$WEB_ROOT"
+                    sudo chown -R jenkins:jenkins "$WEB_ROOT"
+                '''
+            }
+        }
 
-                            sleep 2
-                            echo 'Server started at http://${EC2_HOST}:8000'
-                        "
-                        """
-                    }
-                }
+        stage('Configure Nginx') {
+            steps {
+                sh '''
+                    set -e
+
+                    sudo tee "$NGINX_CONF" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name _;
+
+    location /static/ {
+        root $WEB_ROOT;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \\$host;
+        proxy_set_header X-Real-IP \\$remote_addr;
+    }
+}
+EOF
+
+                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls
+                    sudo rm -f /etc/nginx/sites-enabled/default
+
+                    sudo nginx -t
+                '''
+            }
+        }
+
+        stage('Start Django Server') {
+            steps {
+                sh '''
+                    set -e
+
+                    pkill -f "manage.py runserver" || true
+
+                    . venv/bin/activate
+                    BUILD_ID=dontKillMe nohup python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
+                '''
+            }
+        }
+
+        stage('Start Nginx') {
+            steps {
+                sh '''
+                    set -e
+                    sudo systemctl enable nginx
+                    sudo systemctl restart nginx
+                '''
+            }
+        }
+
+        stage('Test Site') {
+            steps {
+                sh '''
+                    set -e
+                    curl -I http://localhost
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "SUCCESS: Your site is live at http://3.134.89.131:8000"
+            echo 'SUCCESS: Your Django site is live via Nginx (port 80)'
         }
         failure {
-            echo "FAILURE: Check Jenkins console output for errors."
+            echo 'FAILURE: Check Jenkins logs'
         }
     }
 }
