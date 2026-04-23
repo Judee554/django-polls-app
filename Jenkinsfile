@@ -1,6 +1,6 @@
 pipeline {
     agent any
-
+    
     triggers {
         githubPush()
     }
@@ -8,7 +8,6 @@ pipeline {
         SITE_NAME  = "django-polls"
         WEB_ROOT   = "/var/www/django-polls"
         NGINX_CONF = "/etc/nginx/sites-available/django-polls"
-        REPO_URL   = "https://github.com/Judee554/django-polls-app.git"
     }
     options {
         timestamps()
@@ -16,7 +15,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: "${REPO_URL}", branch: 'main'
+                git url: 'https://github.com/Judee554/django-polls-app.git', branch: 'main'
             }
         }
         stage('Verify Project Files') {
@@ -36,7 +35,7 @@ pipeline {
                 sh '''
                     set -e
                     sudo apt update
-                    sudo apt install -y nginx python3-pip python3-venv
+                    sudo apt install -y nginx
                 '''
             }
         }
@@ -44,7 +43,7 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    sudo mkdir -p "$WEB_ROOT/static"
+                    sudo mkdir -p "$WEB_ROOT"
                     sudo chown -R jenkins:jenkins "$WEB_ROOT"
                 '''
             }
@@ -53,16 +52,12 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    python3 manage.py migrate
-                    python3 manage.py collectstatic --noinput || true
-                    rm -rf "$WEB_ROOT/static"/*
-                    cp -r staticfiles/* "$WEB_ROOT/static/" 2>/dev/null || true
+                    rm -rf "$WEB_ROOT"/*
+                    cp manage.py "$WEB_ROOT"/
+                    cp requirements.txt "$WEB_ROOT"/
+                    [ -f db.sqlite3 ] && cp db.sqlite3 "$WEB_ROOT"/ || true
                     echo "Deployed files:"
-                    ls -la "$WEB_ROOT/static"
+                    ls -la "$WEB_ROOT"
                 '''
             }
         }
@@ -74,14 +69,10 @@ pipeline {
 server {
     listen 80;
     server_name _;
-    location /static/ {
-        alias $WEB_ROOT/static/;
-    }
+    root $WEB_ROOT;
+    index manage.py;
     location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        try_files \\$uri \\$uri/ =404;
     }
 }
 EOF
