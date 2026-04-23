@@ -6,10 +6,10 @@ pipeline {
     }
 
     environment {
-        SITE_NAME  = "django-polls"
-        WEB_ROOT   = "/var/www/django-polls"
-        NGINX_CONF = "/etc/nginx/sites-available/django-polls"
-        APP_DIR    = "/var/lib/jenkins/workspace/JudeeJ_COMP314_Exercise4"
+        IMAGE_NAME = "django-polls-app"
+        CONTAINER_NAME = "django-polls-container"
+        HOST_PORT = "8000"
+        CONTAINER_PORT = "8000"
     }
 
     options {
@@ -31,106 +31,50 @@ pipeline {
                     test -f requirements.txt
                     test -d polls
                     test -d mysite
+                    test -f Dockerfile
                     ls -la
                 '''
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Docker Image') {
             steps {
                 sh '''
                     set -e
-                    sudo apt update
-                    sudo apt install -y nginx python3-pip python3-venv
+                    sudo docker build -t $IMAGE_NAME .
                 '''
             }
         }
 
-        stage('Create Web Root') {
+        stage('Stop Old Container') {
             steps {
                 sh '''
+                    set +e
+                    sudo docker stop $CONTAINER_NAME
+                    sudo docker rm $CONTAINER_NAME
                     set -e
-                    sudo mkdir -p "$WEB_ROOT/static"
-                    sudo chown -R jenkins:jenkins "$WEB_ROOT"
                 '''
             }
         }
 
-        stage('Setup Django App') {
+        stage('Run New Container') {
             steps {
                 sh '''
                     set -e
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    python3 manage.py migrate --noinput
-                    python3 manage.py collectstatic --noinput || true
-
-                    if [ -d /var/www/django-polls-app/static ]; then
-                        rm -rf "$WEB_ROOT/static/"*
-                        cp -r /var/www/django-polls-app/static/* "$WEB_ROOT/static/" || true
-                    fi
+                    sudo docker run -d \
+                        --name $CONTAINER_NAME \
+                        -p $HOST_PORT:$CONTAINER_PORT \
+                        $IMAGE_NAME
                 '''
             }
         }
 
-        stage('Configure Nginx Site') {
+        stage('Test Container') {
             steps {
                 sh '''
                     set -e
-                    sudo tee "$NGINX_CONF" > /dev/null <<EOF
-server {
-    listen 80;
-    server_name _;
-
-    location /static/ {
-        alias $WEB_ROOT/static/;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \\$host;
-        proxy_set_header X-Real-IP \\$remote_addr;
-        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
-    }
-}
-EOF
-                    sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/django-polls
-                    sudo rm -f /etc/nginx/sites-enabled/default
-                    sudo nginx -t
-                '''
-            }
-        }
-
-        stage('Start Django Server') {
-            steps {
-                sh '''
-                    set -e
-                    pkill -f "manage.py runserver" || true
-                    nohup bash -c "cd $APP_DIR && . venv/bin/activate && python3 manage.py runserver 0.0.0.0:8000" > django.log 2>&1 &
                     sleep 5
-                    pgrep -f "manage.py runserver" > /dev/null
-                '''
-            }
-        }
-
-        stage('Start Nginx') {
-            steps {
-                sh '''
-                    set -e
-                    sudo systemctl enable nginx
-                    sudo systemctl restart nginx
-                '''
-            }
-        }
-
-        stage('Test Website Locally') {
-            steps {
-                sh '''
-                    set -e
                     curl -I http://127.0.0.1:8000
-                    curl -I http://localhost
                 '''
             }
         }
@@ -138,10 +82,10 @@ EOF
 
     post {
         success {
-            echo 'Deployment successful.'
+            echo 'Docker deployment successful.'
         }
         failure {
-            echo 'Deployment failed. Check Jenkins console output.'
+            echo 'Docker deployment failed. Check Jenkins console output.'
         }
     }
 }

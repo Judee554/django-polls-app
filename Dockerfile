@@ -1,16 +1,17 @@
-FROM nginx:stable-alpine
+FROM python:3.12-slim
 
-RUN rm -rf /usr/share/nginx/html/*
-COPY index.html /usr/share/nginx/html/
-COPY sgustyle.css /usr/share/nginx/html/
-COPY sguscript.js /usr/share/nginx/html/
+WORKDIR /app
 
-# Optional images/assets
-COPY grenada.jpeg /usr/share/nginx/html/
-COPY grenada-updated.jpeg /usr/share/nginx/html/
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY requirements.txt /app/
 
-EXPOSE 80
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-CMD ["nginx", "-g", "daemon off;"]
+COPY . /app/
+
+EXPOSE 8000
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
